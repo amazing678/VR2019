@@ -12,9 +12,11 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.IO;
-using NibiruTask;
 
-public class VRMain:MonoBehaviour
+// 【Unity大师修改】彻底移除旧版 NXR 依赖
+// using NibiruTask;
+
+public class VRMain : MonoBehaviour
 {
     [Header("把他设置为true就可以关闭视频---")]
     public bool isOutVideo;
@@ -45,12 +47,21 @@ public class VRMain:MonoBehaviour
     public bool isSingleLevelMode = false;
     public void Awake()
     {
+        //如果场景里已经有 Main 了，立刻销毁新加载的这个空壳
+        if (instance != null && instance != this)
+        {
+            Destroy(this.gameObject);
+            return;
+        }
+
         instance = this;
         DontDestroyOnLoad(gameObject);
     }
 
-    public void Start() {
-        NibiruTaskApi.Init();
+    public void Start()
+    {
+        // 【Unity大师修改】移除旧版 SDK 的初始化调用
+        // NibiruTaskApi.Init();
 
         VRMain.instance.isAllPlayer = true;
         VRMain.instance.isLiyue = false;
@@ -74,13 +85,15 @@ public class VRMain:MonoBehaviour
 
         if (Application.platform == RuntimePlatform.Android)
         {
-            String str = NibiruTaskApi.GetMacAddress();
+            // 【Unity大师修改】弃用被安卓系统封杀的旧版 MAC 获取方式，改用 Unity 原生设备 ID
+            // String str = NibiruTaskApi.GetMacAddress();
+            String str = SystemInfo.deviceUniqueIdentifier;
             if (!String.IsNullOrEmpty(str)) onlyMac = str;
         }
 
     }
     public void ChangeSence(String sceneName, String videoName, bool isLookVideo = false, bool isNoHudie = true)
-    {    
+    {
         Resources.UnloadUnusedAssets();
         GC.Collect();
 
@@ -102,12 +115,14 @@ public class VRMain:MonoBehaviour
         SceneManager.LoadScene("Loading");
 
     }
-    public void ToChangeSence() {
+    public void ToChangeSence()
+    {
 
         SceneManager.LoadScene("Loading");
 
     }
-    public void ToMain() {
+    public void ToMain()
+    {
         SceneManager.LoadScene("Main_2");
     }
 
@@ -116,41 +131,24 @@ public class VRMain:MonoBehaviour
     public String GetMacAddress()
     {
         return onlyMac;
-
-        //String str = "";
-
-        //NetworkInterface[] nice = NetworkInterface.GetAllNetworkInterfaces();
-        //if (nice.Length <= 0) return str;
-
-        //byte[] address = nice[0].GetPhysicalAddress().GetAddressBytes();
-        //if (address == null) return str;
-
-        //for (int i = 0; i < address.Length; i++)
-        //{
-        //    String temp = Convert.ToString(address[i], 16).ToUpper();
-        //    if (temp.Length == 1) temp = "0" + temp;
-
-        //    str += temp;
-        //    if (i < address.Length - 1)
-        //        str += "-";
-        //}
-
-        //return str;
     }
 
-    public void OpenScene(String sceneName) {
+    public void OpenScene(String sceneName)
+    {
 
         StartCoroutine(WebOpenScene(sceneName));
 
     }
-    public void CloseScene() {
+    public void CloseScene()
+    {
         StartCoroutine(WebHeart());
     }
     StringBuilder sb = new StringBuilder();
 
     String machineRecordID = null;
 
-    public IEnumerator WebOpenScene(String name) {
+    public IEnumerator WebOpenScene(String name)
+    {
 
 
         sb.Clear();
@@ -162,10 +160,11 @@ public class VRMain:MonoBehaviour
         //
         machineRecordID = null;
 
-        
+
         UnityWebRequest request = UnityWebRequest.Get(sb.ToString());
         yield return request.SendWebRequest();
-        if (request.isNetworkError || request.isHttpError){
+        if (request.isNetworkError || request.isHttpError)
+        {
             //SceneManager.LoadScene("LookMac");
             yield break;
         }
@@ -176,7 +175,8 @@ public class VRMain:MonoBehaviour
             machineRecordID = dic["body"]["machineRecordID"].ToString();
 
         }
-        catch {
+        catch
+        {
             machineRecordID = null;
             //SceneManager.LoadScene("LookMac");
 
@@ -187,7 +187,8 @@ public class VRMain:MonoBehaviour
 
 
 
-    public IEnumerator WebHeart() {
+    public IEnumerator WebHeart()
+    {
 
         if (machineRecordID == null) yield break;
         sb.Clear();
@@ -196,9 +197,10 @@ public class VRMain:MonoBehaviour
 
         UnityWebRequest request = UnityWebRequest.Get(sb.ToString());
         yield return request.SendWebRequest();
-        
+
     }
-    public IEnumerator Heart() {
+    public IEnumerator Heart()
+    {
         yield return null;
         //while (true) {
 

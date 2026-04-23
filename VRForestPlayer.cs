@@ -35,7 +35,7 @@ public class VRForestPlayer : MonoBehaviour
         instance = this;
         splineMove = GetComponent<splineMove>();
 
-        back = VRMain.instance.transform.Find("NibiruXRSDK/MainCamera/Canvas/Back").GetComponent<CanvasGroup>();
+        back = VRMain.instance.transform.Find("XR Origin (XR Rig)/Camera Offset/Main Camera/Canvas/Back").GetComponent<CanvasGroup>();
 
         VRMain.instance.transform.position = cameraRig.position;
         VRMain.instance.transform.eulerAngles = cameraRig.eulerAngles;

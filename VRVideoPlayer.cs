@@ -19,30 +19,48 @@ public class VRVideoPlayer : MonoBehaviour
         if (Application.platform == RuntimePlatform.Android)
             path = "/sdcard/VRVideo/";
 
-        player.OpenVideoFromFile(FileLocation.AbsolutePathOrURL, path + VRMain.instance.videoName + ".mp4", true);
+        //player.OpenVideoFromFile(FileLocation.AbsolutePathOrURL, path + VRMain.instance.videoName + ".mp4", true);
+        // 1. 注册 AVPro 的播放事件监听器
+        if (player != null)
+        {
+            player.Events.AddListener(OnVideoEvent);
+            player.OpenVideoFromFile(MediaPlayer.FileLocation.AbsolutePathOrURL, path + VRMain.instance.videoName + ".mp4", true);
+        }
     }
 
+    // 2. 自动监听视频状态
+    private void OnVideoEvent(MediaPlayer mp, MediaPlayerEvent.EventType eventType, ErrorCode code)
+    {
+        // 当 AVPro 报告“视频已经播放完毕”时，自动触发结束逻辑
+        if (eventType == MediaPlayerEvent.EventType.FinishedPlaying)
+        {
+            Debug.Log("[VR架构] 视频播放完毕，准备自动跳转场景...");
+            IsFinishing();
+        }
+    }
 
     public void IsFinishing()
     {
         if (VRMain.instance == null) return;
         if (VRMain.instance.isAllPlayer == false) return;
 
-        VRPlayer.instance.IsOpenAllGroup1(true, false, ()=> {
+        if (VRPlayer.instance != null)
+        {
+            VRPlayer.instance.IsOpenAllGroup1(true, false, () => {
+                VRMain.instance.isLookVideo = true;
+                VRMain.instance.ToChangeSence(); // 视频播放完跳转
+            });
+        }
 
-            VRMain.instance.isLookVideo = true;
-            VRMain.instance.ToChangeSence();//视频播放完跳转
 
-        });
-
-       
 
     }
-    
-    
-    // Update is called once per frame
-    void Update()
+    // 严谨的架构师习惯：销毁时注销事件，防止内存泄漏
+    void OnDestroy()
     {
-        
+        if (player != null)
+        {
+            player.Events.RemoveListener(OnVideoEvent);
+        }
     }
 }

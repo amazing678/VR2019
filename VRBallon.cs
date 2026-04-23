@@ -21,6 +21,14 @@ public class VRBallon:MonoBehaviour
 
     public Collider[] colliders;
 
+    VRBallon temp;
+    Color color = new Color(0.1f, 0.1f, 0.1f);
+    Renderer[] meshRenderers;
+    float time;
+
+    // 【新增】XRI 悬停状态
+    private bool isHovering = false;
+
     public void OpenObj(int i)
     {
         obj01.SetActive(i == 1);
@@ -83,74 +91,84 @@ public class VRBallon:MonoBehaviour
 
     bool isOpenBallon;
     bool isOpen;
-    public void DestroyThis() {
-        Destroy(gameObject);
-        VRPlayer.instance.isClosePoint = true;
-        //出现文字
-        #region 
-        //DOTween.To(() => Vector3.zero, X => { }, Vector3.zero, 2).OnComplete(() => {
-        VRBallonPlayer.instance.OpenTip(VRBallonPlayer.instance.count == 3 ? "请向前看!" : "请向前看!", true, () => {
-                DOTween.To(() => Vector2.zero, x => { }, Vector2.zero, VRBallonPlayer.instance.count == 3 ? 4 : 2).OnComplete(() => {
-                    VRBallonPlayer.instance.OpenTip(VRBallonPlayer.instance.count == 3 ? "请向前看!" : "请向前看!", false, () => {
-                        if (VRBallonPlayer.instance.count == 3)
-                        {
-                            if (VRMain.instance != null && VRMain.instance.isAllPlayer == true)
-                            {
-                                VRBallonPlayer.instance.ChangeScene();
-                            }
-                            return;
-                        }
-                        VRBallonPlayer.instance.count++;
-                        VRBallonPlayer.instance.InstanceBallon(x => { gim.obj = x; }, gim.transform, 0, VRBallonPlayer.instance.count + 1);
-                    });
-
-                });
-
-            });
-        //});
-        #endregion
+    public void OnRayHoverEnter()
+    {
+        // 如果气球还没飞到位，或者已经被点破了，则不响应
+        if (!isOpenBallon) return;
+        isHovering = true;
     }
 
+    // ==========================================
+    // 【XRI 事件】手柄射线移开时
+    // ==========================================
+    public void OnRayHoverExit()
+    {
+        if (!isOpenBallon) return;
+        isHovering = false;
 
-    VRBallon temp;
-    Color color = new Color(0.1f, 0.1f, 0.1f);
-    Renderer[] meshRenderers;
-    float time;
-    public void Update() {
-
-        if (isOpenBallon == false) return;
-        if (VRPlayer.instance.RayCamera == null) return;
-        Ray ray = VRPlayer.instance.RayCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
-        Debug.DrawRay(ray.origin, ray.direction * 1000, Color.red);
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, Mathf.Infinity, 1 << LayerMask.NameToLayer("BaoXiang")))
+        // 恢复暗色，时间清零
+        color = new Color(0.1f, 0.1f, 0.1f);
+        foreach (Renderer item in meshRenderers)
         {
-            //temp = this;
-            temp = hit.collider.GetComponentInParent<VRBallon>();
-            temp.color = Color.Lerp(temp.color, Color.red, Time.deltaTime * 0.5f);
-            foreach (Renderer item in temp.meshRenderers)
+            if (item != null && item.materials.Length >= 2)
             {
-                item.materials[0].SetColor("_EmissionColor", temp.color);
-                item.materials[1].SetColor("_EmissionColor", temp.color);
+                item.materials[0].SetColor("_EmissionColor", color);
+                item.materials[1].SetColor("_EmissionColor", color);
             }
-            if ((temp.time += Time.deltaTime) > 3)
+        }
+        time = 0;
+    }
+
+    void Update()
+    {
+        // 只有气球准备好，且被手柄射线指着的时候，才执行变红逻辑
+        if (isOpenBallon && isHovering)
+        {
+            color = Color.Lerp(color, Color.red, Time.deltaTime * 0.5f);
+            foreach (Renderer item in meshRenderers)
             {
+                if (item != null && item.materials.Length >= 2)
+                {
+                    item.materials[0].SetColor("_EmissionColor", color);
+                    item.materials[1].SetColor("_EmissionColor", color);
+                }
+            }
+
+            time += Time.deltaTime;
+            if (time > 3f)
+            {
+                // 防止重复触发
+                isOpenBallon = false;
+                isHovering = false;
                 DestroyThis();
             }
         }
-        else
-        {
-            if (temp != null)
-            {
-                temp.color = new Color(0.1f,0.1f,0.1f);
-                foreach (Renderer item in temp.meshRenderers)
-                {
-                    item.materials[0].SetColor("_EmissionColor", temp.color);
-                    item.materials[1].SetColor("_EmissionColor", temp.color);
-                }
-                temp.time = 0;
-            }
-        }
+    }
 
+    // ==========================================
+    // 销毁与流程推进（保留原版代码）
+    // ==========================================
+    public void DestroyThis()
+    {
+        Destroy(gameObject);
+        if (VRPlayer.instance != null) VRPlayer.instance.isClosePoint = true;
+
+        // 出现文字
+        VRBallonPlayer.instance.OpenTip(VRBallonPlayer.instance.count == 3 ? "请向前看!" : "请向前看!", true, () => {
+            DOTween.To(() => Vector2.zero, x => { }, Vector2.zero, VRBallonPlayer.instance.count == 3 ? 4 : 2).OnComplete(() => {
+                VRBallonPlayer.instance.OpenTip(VRBallonPlayer.instance.count == 3 ? "请向前看!" : "请向前看!", false, () => {
+                    if (VRBallonPlayer.instance.count == 3)
+                    {
+                        if (VRMain.instance != null && VRMain.instance.isAllPlayer == true)
+                        {
+                            VRBallonPlayer.instance.ChangeScene();
+                        }
+                        return;
+                    }
+                    VRBallonPlayer.instance.count++;
+                    VRBallonPlayer.instance.InstanceBallon(x => { gim.obj = x; }, gim.transform, 0, VRBallonPlayer.instance.count + 1);
+                });
+            });
+        });
     }
 }
